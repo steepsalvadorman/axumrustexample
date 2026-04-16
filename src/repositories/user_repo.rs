@@ -8,6 +8,7 @@ pub trait UserRepoTrait{
 }
 
 
+#[derive(Clone)]
 pub struct PostgresUserRepository {
     pub pool: PgPool,
 }
