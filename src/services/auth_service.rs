@@ -1,10 +1,6 @@
 use crate::models::dtos::auth::{LoginRequest, LoginResponse};
 use crate::repositories::user_repo::UserRepoTrait;
 
-/// Servicio de autenticación de usuarios.
-///
-/// Contiene la lógica de negocio del login y delega el acceso
-/// a datos al repositorio mediante un trait object.
 pub struct AuthService {
     repo: Box<dyn UserRepoTrait + Send + Sync>,
 }
@@ -33,11 +29,19 @@ impl AuthService {
                     }
                 }
             }
-            _ => LoginResponse {
+            Ok(None) => LoginResponse {
                 success: false,
                 message: "Usuario no encontrado".to_string(),
                 token: None,
             },
+            Err(e) => {
+                eprintln!("❌ Error de base de datos en find_by_email: {e}");
+                LoginResponse {
+                    success: false,
+                    message: "Error interno del servidor".to_string(),
+                    token: None,
+                }
+            }
         }
     }
 }
