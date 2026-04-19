@@ -1,0 +1,7 @@
+[build]
+target = "index.html"
+
+[serve]
+port = 8081
+open = false
+serve_fallback = true

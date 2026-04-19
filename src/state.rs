@@ -1,29 +1,54 @@
 use std::sync::Arc;
-use sqlx::PgPool;
+use sea_orm::DatabaseConnection;
+use redis::Client as RedisClient;
+use oauth2::basic::BasicClient;
 use crate::services::auth_service::AuthService;
 use crate::repositories::user_repo::{PostgresUserRepository, UserRepoTrait};
 
-/// Estado compartido de la aplicación.
-///
-/// Se inyecta en cada handler de Axum mediante `State<AppState>`.
-/// Utiliza `Arc` para compartir el servicio de forma segura entre
-/// múltiples hilos sin necesidad de copiar los datos.
+// Se crea un contexto en la aplicacion para postgres
+#[derive(Clone)]
+pub struct AuthContext {
+    pub service: Arc<AuthService>,
+    pub oauth_client: BasicClient,
+}
+
+// Implementamos primero la base de datos
+impl AuthContext {
+    pub fn new(db: DatabaseConnection, oauth_client: BasicClient) -> Self {
+        let repo: Box<dyn UserRepoTrait + Send + Sync> = Box::new(PostgresUserRepository { db });
+        let service = Arc::new(AuthService::new(repo));
+        
+        Self { service, oauth_client }
+    }
+}
+
+// Se crea un contexto para Redis
+#[derive(Clone)]
+pub struct CacheContext {
+    pub client: RedisClient,
+}
+
+impl CacheContext {
+    pub fn new(client: RedisClient) -> Self {
+        Self { client }
+    }
+}
+
+
+
+// Finalmente se usa ambos contextos 
 #[derive(Clone)]
 pub struct AppState {
-    /// Servicio de autenticación envuelto en `Arc` para compartirse
-    /// entre hilos. Usa `Box<dyn UserRepoTrait>` internamente para
-    /// permitir inyección de dependencias y facilitar pruebas con mocks.
-    pub auth_service: Arc<AuthService>,
+    pub auth: AuthContext,
+    pub cache: CacheContext,
 }
 
 impl AppState {
-    /// Crea el estado de la aplicación a partir del pool de base de datos.
-    pub fn new(pool: PgPool) -> Self {
-        let repo: Box<dyn UserRepoTrait + Send + Sync> =
-            Box::new(PostgresUserRepository { pool });
-
-        let auth_service = Arc::new(AuthService::new(repo));
-
-        Self { auth_service }
+    // El constructor principal ahora pide ambas conexiones principales
+    pub fn new(db: DatabaseConnection, redis_client: RedisClient, oauth_client: BasicClient) -> Self {
+        Self { 
+            auth: AuthContext::new(db, oauth_client),
+            cache: CacheContext::new(redis_client),
+        }
     }
 }

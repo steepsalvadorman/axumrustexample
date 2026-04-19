@@ -10,7 +10,7 @@ impl AuthService {
         Self { repo }
     }
 
-    pub async fn authenticate(&self, payload: LoginRequest) -> LoginResponse {
+    pub async  fn authenticate(&self, payload: LoginRequest) -> LoginResponse {
         let result = self.repo.find_by_email(&payload.email).await;
 
         match result {

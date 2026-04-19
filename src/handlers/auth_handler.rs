@@ -16,7 +16,7 @@ pub async fn login(
     State(state): State<AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> impl IntoResponse {
-    let response = state.auth_service.authenticate(payload).await;
+    let response = state.auth.service.authenticate(payload).await;
 
     if response.success {
         (StatusCode::OK, Json(response)).into_response()

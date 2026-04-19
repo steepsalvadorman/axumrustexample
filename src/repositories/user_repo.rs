@@ -1,27 +1,25 @@
-use sqlx::PgPool;
-use crate::models::entities::user::User;
+use sea_orm::{DatabaseConnection, EntityTrait, QueryFilter, ColumnTrait};
+use crate::models::entities::user::{Entity as UserEntity, Column as UserColumn, Model as User};
 use async_trait::async_trait;
 
 #[async_trait]
 pub trait UserRepoTrait{
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error>;
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, sea_orm::DbErr>;
 }
 
 
 #[derive(Clone)]
 pub struct PostgresUserRepository {
-    pub pool: PgPool,
+    pub db: DatabaseConnection,
 }
 
 #[async_trait]
 impl UserRepoTrait for PostgresUserRepository {
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as::<_, User>(
-            "SELECT id, email, password FROM usuarios WHERE email = $1",
-        )
-        .bind(email)
-        .fetch_optional(&self.pool)
-        .await?;
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, sea_orm::DbErr> {
+        let user = UserEntity::find()
+            .filter(UserColumn::Email.eq(email))
+            .one(&self.db)
+            .await?;
 
         Ok(user)
     }
